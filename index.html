@@ -1,0 +1,330 @@
+<!doctype html>
+<html ng-app="app">
+<head>
+    <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.3.3/angular.min.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script> 
+    <link rel="stylesheet" href="css/bootstrap-combined.min.css">
+<style>
+html, 
+body
+{ height: 100%; }
+.tabbable,
+.tab-content,
+.tab-content>.tab-pane,
+.keys { height: 95%; }
+.hovering{background:blue;color:white;}
+.keys{
+    display:flex;
+    flex-direction:row;
+    flex-wrap:wrap;
+    flex-flow: row wrap;
+}
+.key{
+    flex:1;
+    text-transform:uppercase;
+    font-weight:bold;
+}
+.letter{
+    font-size:40px
+}
+.command{
+    font-size:10px;
+}
+.letter-box textarea{
+width:99%;font-size:32px;line-height:1;
+}
+.nav-tabs{display:none;}
+</style>
+</head>
+
+<body>
+    <tabs>
+    <letter-box></letter-box>
+    <pane title="Letters">
+    <letter-keys></letter-keys>
+    </pane>
+    <pane title="Settings" class="pull-right">
+    </pane>
+    </pane>
+    </tabs>
+
+<script>
+'use strict';
+
+    angular.module('components', [])
+     
+    .directive('tabs', function() {
+    return {
+    restrict: 'E',
+    transclude: true,
+    scope: {},
+    controller: function($scope, $element) {
+    var panes = $scope.panes = [];
+     
+    $scope.select = function(pane) {
+    angular.forEach(panes, function(pane) {
+    pane.selected = false;
+    });
+    pane.selected = true;
+    }
+     
+    this.addPane = function(pane) {
+    if (panes.length == 0) $scope.select(pane);
+    panes.push(pane);
+    }
+    },
+    template:
+    '<div class="tabbable">' +
+    '<ul class="nav nav-tabs">' +
+    '<li ng-repeat="pane in panes" ng-class="{active:pane.selected}">'+
+    '<a hover-click href="" ng-click="select(pane)">{{pane.title}}</a>' +
+    '</li>' +
+    '</ul>' +
+    '<div class="tab-content" ng-transclude></div>' +
+    '</div>',
+    replace: true
+    };
+    })
+     
+    .directive('pane', function() {
+    return {
+    require: '^tabs',
+    restrict: 'E',
+    transclude: true,
+    scope: { title: '@' },
+    link: function(scope, element, attrs, tabsCtrl) {
+        tabsCtrl.addPane(scope);
+    },
+    template:
+    '<div class="tab-pane" ng-class="{active: selected}" ng-transclude>' +
+    '</div>',
+    replace: true
+    };
+    })
+
+
+</script>
+
+<script>
+'use strict';
+    angular.module('app', ['components'])
+    .controller('BeerCounter', function($scope, $locale) {
+    $scope.beers = [0, 1, 2, 3, 4, 5, 6];
+    if ($locale.id == 'en-us') {
+    $scope.beerForms = {
+    0: 'no beers',
+    one: '{} beer',
+    other: '{} beers'
+    };
+    } else {
+    $scope.beerForms = {
+    0: 'žiadne pivo',
+    one: '{} pivo',
+    few: '{} pivá',
+    other: '{} pív'
+    };
+    }
+    })
+.directive('hoverClick', ['$timeout',function($timeout) {
+  var HOVER_CLASS = "hovering";
+  var delay = 1000;
+  return {
+    restrict: 'A',
+    //require: 'ngModel',
+    link: function(scope, element, attrs, ctrl) {
+    //  ctrl.$promise = false;
+        function cancelHover(){
+        element.removeClass(HOVER_CLASS);
+        scope.$apply(function() {
+            $timeout.cancel(element.$promise);
+            element.$promise = false;
+        });
+        }
+      element.bind('mouseenter', function(evt) {
+        element.addClass(HOVER_CLASS);
+        scope.$apply(function() {
+            element.$promise = $timeout(function(){
+                element.triggerHandler('click');
+                },delay);
+        });
+      }).bind('mouseleave', function(evt) {
+          cancelHover();
+      }).bind('click', function(evt) {
+          cancelHover();
+      });
+    }
+  };
+}])
+    .directive('letterKeys', function() {
+    return {
+    restrict: 'E',
+    //transclude: true,
+    //scope: {},
+    controllerAs:'Keys',
+    controller: function($log,$scope,$timeout) {
+        this.letters = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']; 	
+        this.commands = ['space','backspace word','backspace letter','enter']; 	
+        this.delay = 1000;
+        this.promise;
+        this.mouseenter=function(letter){
+            //$log.info(letter);
+            //$scope.box.addLetter(letter);
+            this.promise=$timeout(function(){
+                    $scope.box.addLetter(letter);
+                },this.delay);
+        };
+        this.mouseleave=function(letter){
+            //$log.error(letter);
+            //$timeout.flush();
+            $timeout.cancel(this.promise);
+        };
+    },
+    template:
+    '<div class="keys">'+
+    '<button hover-click class="key letter letter-{{letter}}" ng-click="box.addLetter(letter)" ng-repeat="letter in Keys.letters" >' +
+    '{{ letter }}' +
+    '</button>'+
+    '<button hover-click class="key command command-{{letter}}" ng-click="box.command(letter)" ng-repeat="letter in Keys.commands" >' +
+    '{{ letter }}' +
+    '</button>'+
+    '</div>',
+    replace: true
+    };
+    })
+    .directive('letterBox', function() {
+        return {
+            restrict: 'E',
+            transclude: true,
+            //scope: {},
+            controllerAs:'box',
+            controller: function($scope,$log) {
+                this.isPreditive=true;
+                this.predictiveStart='';
+                this.letters='';
+
+                this.addLetter=function(letter){
+                //$log.info(this.letters);
+                   // this.letters=this.letters+letter;
+            var cursorPos = $('.letter-box textarea').prop('selectionStart');
+            var v = $('.letter-box textarea').val();
+            var textBefore = v.substring(0,  cursorPos );
+            var textAfter  = v.substring( cursorPos, v.length );
+            //$('.letter-box textarea').val( textBefore+ $(this).val() +textAfter );
+            this.letters=textBefore+ letter +textAfter;
+            $('.letter-box textarea').prop('selectionStart',cursorPos+letter.length);
+                }
+                this.command=function(command){
+                    switch(command){
+                        case 'space':
+                            this.addLetter(' ');
+                        break;
+                        case 'enter':
+                            this.addLetter("\n");
+                        break;
+                        case 'backspace letter':
+                            var v = $('.letter-box textarea').val();
+                            if(v.length>0){
+                                this.letters =  v.substring(0, v.length-1);
+                            }
+                        break;
+                    }
+                }
+                this.deleteAll=function(letter){
+                    this.letters='';
+                }
+                this.deleteWord=function(letter){
+                    if(this.letters.length && this.letters.lastIndexOf(' ')!=-1)
+                        this.letters=this.letters.slice(0, -(this.letters.length - this.letters.lastIndexOf(' ')-1));
+                }
+                this.deleteLetter=function(letter){
+                    if(this.letters.length)
+                        this.letters=this.letters.slice(0, -1);
+                }
+            },
+            template:
+            '<div class="letter-box">' +
+            '<textarea ng-model="box.letters"></textarea>' +
+            '<div>' +
+            //'<button ng-click="box.deleteAll()">Delete All</button>' +
+            //'<button ng-click="box.deleteWord()">Delete Word</button>' +
+            //'<button ng-click="box.deleteLetter()">Delete Letter</button>' +
+            '</div>' +
+            '</div>',
+            replace: true
+        };
+    })
+
+var saveSelection, restoreSelection;
+
+if (window.getSelection && document.createRange) {
+    saveSelection = function(containerEl) {
+        var range = window.getSelection().getRangeAt(0);
+        var preSelectionRange = range.cloneRange();
+        preSelectionRange.selectNodeContents(containerEl);
+        preSelectionRange.setEnd(range.startContainer, range.startOffset);
+        var start = preSelectionRange.toString().length;
+
+        return {
+            start: start,
+            end: start + range.toString().length
+        }
+    };
+
+    restoreSelection = function(containerEl, savedSel) {
+        var charIndex = 0, range = document.createRange();
+        range.setStart(containerEl, 0);
+        range.collapse(true);
+        var nodeStack = [containerEl], node, foundStart = false, stop = false;
+        
+        while (!stop && (node = nodeStack.pop())) {
+            if (node.nodeType == 3) {
+                var nextCharIndex = charIndex + node.length;
+                if (!foundStart && savedSel.start >= charIndex && savedSel.start <= nextCharIndex) {
+                    range.setStart(node, savedSel.start - charIndex);
+                    foundStart = true;
+                }
+                if (foundStart && savedSel.end >= charIndex && savedSel.end <= nextCharIndex) {
+                    range.setEnd(node, savedSel.end - charIndex);
+                    stop = true;
+                }
+                charIndex = nextCharIndex;
+            } else {
+                var i = node.childNodes.length;
+                while (i--) {
+                    nodeStack.push(node.childNodes[i]);
+                }
+            }
+        }
+
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+} else if (document.selection && document.body.createTextRange) {
+    saveSelection = function(containerEl) {
+        var selectedTextRange = document.selection.createRange();
+        var preSelectionTextRange = document.body.createTextRange();
+        preSelectionTextRange.moveToElementText(containerEl);
+        preSelectionTextRange.setEndPoint("EndToStart", selectedTextRange);
+        var start = preSelectionTextRange.text.length;
+
+        return {
+            start: start,
+            end: start + selectedTextRange.text.length
+        }
+    };
+
+    restoreSelection = function(containerEl, savedSel) {
+        var textRange = document.body.createTextRange();
+        textRange.moveToElementText(containerEl);
+        textRange.collapse(true);
+        textRange.moveEnd("character", savedSel.end);
+        textRange.moveStart("character", savedSel.start);
+        textRange.select();
+    };
+}
+
+</script>
+
+</body>
+</html>
