@@ -1,4 +1,4 @@
-on-web-keyboard
+On Web Keyboard
 ===============
 
-Accessibility via using an on web keyboard.
+Keyboard accessibility via an [on-the-web keyboard](https://sitecode.github.io/on-web-keyboard) viewable from most modern web browsers.
