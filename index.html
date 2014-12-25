@@ -11,7 +11,7 @@ body
 .tabbable,
 .tab-content,
 .tab-content>.tab-pane,
-.keys { height: 95%; }
+.keys { Dheight: 95%; }
 .hovering{background:blue;color:white;}
 .keys{
     display:flex;
@@ -20,9 +20,11 @@ body
     flex-flow: row wrap;
 }
 .key{
+    display:flex;
     flex:1;
     text-transform:uppercase;
     font-weight:bold;
+    min-width:10%;
 }
 .letter{
     font-size:40px
@@ -31,7 +33,7 @@ body
     font-size:10px;
 }
 .letter-box textarea{
-width:99%;font-size:32px;line-height:1;
+width:99%;font-size:32px;line-height:1;height:66px;
 }
 .nav-tabs{display:none;}
 </style>
@@ -164,20 +166,6 @@ width:99%;font-size:32px;line-height:1;
     controller: function($log,$scope,$timeout) {
         this.letters = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']; 	
         this.commands = ['space','backspace word','backspace letter','enter']; 	
-        this.delay = 1000;
-        this.promise;
-        this.mouseenter=function(letter){
-            //$log.info(letter);
-            //$scope.box.addLetter(letter);
-            this.promise=$timeout(function(){
-                    $scope.box.addLetter(letter);
-                },this.delay);
-        };
-        this.mouseleave=function(letter){
-            //$log.error(letter);
-            //$timeout.flush();
-            $timeout.cancel(this.promise);
-        };
     },
     template:
     '<div class="keys">'+
@@ -225,6 +213,13 @@ width:99%;font-size:32px;line-height:1;
                             var v = $('.letter-box textarea').val();
                             if(v.length>0){
                                 this.letters =  v.substring(0, v.length-1);
+                            }
+                        break;
+                        case 'backspace word':
+                            var v = $('.letter-box textarea').val();
+                            v = v.replace(/\s+$/,'');
+                            if(v.length>0){
+                                this.letters =  v.substring(0, v.lastIndexOf(' '));
                             }
                         break;
                     }
@@ -324,6 +319,32 @@ if (window.getSelection && document.createRange) {
     };
 }
 
+
+function setStyle(cssText) {
+    var sheet = document.createElement('style'), isIE = false;
+    sheet.type = 'text/css';
+    /* Optional */ window.customSheet = sheet;
+    (document.head || document.getElementsByTagName('head')[0]).appendChild(sheet);
+    try{sheet.cloneNode(false).appendChild(document.createTextNode(''));}
+    catch(err){isIE = true;}
+    var wrapper = isIE ? document.createElement('div') : sheet;
+    return (setStyle = function(cssText, node) {
+        if(!node || node.parentNode !== wrapper)
+            node = wrapper.appendChild(document.createTextNode(cssText));
+        else node.nodeValue = cssText;
+        if (isIE) sheet.styleSheet.cssText = wrapper.innerHTML;
+        return node;
+    })(cssText);
+}
+
+$(document).ready(function() {
+  body_sizer();
+  $(window).resize(body_sizer);
+});
+function body_sizer() {
+  var bodyheight = $(window).height();
+  $(".keys").height(bodyheight-$(".letter-box").height());
+}
 </script>
 
 </body>
